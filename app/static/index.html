@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SECOP I Local Explorer</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero">
+        <div class="hero-inner">
+          <div class="tag">SECOP I Local Explorer</div>
+          <h1>Busqueda local enfocada en La Guajira / Albania</h1>
+          <p>
+            Consulta y exporta el subconjunto filtrado del dataset SECOP I.
+            Usa filtros adicionales para afinar los resultados.
+          </p>
+          <div class="hero-actions">
+            <button class="btn primary" id="btn-refresh">Cargar datos</button>
+            <button class="btn ghost" id="btn-stats">Ver resumen</button>
+            <button class="btn secondary" id="btn-status">Ver estado</button>
+          </div>
+          <div class="meta-line" id="status-line">Estado: listo</div>
+        </div>
+      </header>
+
+      <section class="status-bar" id="status-bar">
+        <div class="status-card">
+          <div class="label">Total registros</div>
+          <div class="value" id="stat-total-top">-</div>
+        </div>
+        <div class="status-card">
+          <div class="label">Pagina actual</div>
+          <div class="value" id="stat-page-top">-</div>
+        </div>
+        <div class="status-card">
+          <div class="label">Ultima sync</div>
+          <div class="value" id="stat-sync-top">-</div>
+        </div>
+        <div class="status-card">
+          <div class="label">Estado sync</div>
+          <div class="value" id="stat-sync-status">-</div>
+        </div>
+      </section>
+
+      <div class="alert hidden" id="alert-box"></div>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Filtros</h2>
+          <div class="pill">Filtro permanente activo</div>
+        </div>
+        <div class="quick-filters">
+          <button class="chip" data-estado="CONVOCADO">Convocado</button>
+          <button class="chip" data-estado="ADJUDICADO">Adjudicado</button>
+          <button class="chip" data-estado="TERMINADO ANORMALMENTE DESPUES DE CONVOCADO">Terminado anormal</button>
+          <button class="chip" data-estado="">Limpiar estado</button>
+        </div>
+        <div class="filters">
+          <div class="field">
+            <label>Año firma contrato</label>
+            <input type="number" id="anno" placeholder="2019" />
+          </div>
+          <div class="field">
+            <label>Año (desde)</label>
+            <input type="number" id="anno-min" placeholder="2018" />
+          </div>
+          <div class="field">
+            <label>Año (hasta)</label>
+            <input type="number" id="anno-max" placeholder="2024" />
+          </div>
+          <div class="field">
+            <label>Modalidad</label>
+            <input type="text" id="modalidad" placeholder="Licitacion Publica" />
+          </div>
+          <div class="field">
+            <label>Destino del gasto</label>
+            <input type="text" id="destino" placeholder="No aplica" />
+          </div>
+          <div class="field">
+            <label>Nombre de entidad (contiene)</label>
+            <input type="text" id="entidad" placeholder="ALCALDIA" />
+          </div>
+          <div class="field">
+            <label>Cuantía (mín)</label>
+            <input type="number" id="cuantia-min" placeholder="0" />
+          </div>
+          <div class="field">
+            <label>Cuantía (máx)</label>
+            <input type="number" id="cuantia-max" placeholder="100000000" />
+          </div>
+          <div class="field">
+            <label>Estado</label>
+            <input type="text" id="estado" placeholder="CONVOCADO" />
+          </div>
+          <div class="field">
+            <label>Búsqueda libre</label>
+            <input type="text" id="q" placeholder="obra" />
+          </div>
+          <div class="field">
+            <label>Resultados por página</label>
+            <input type="number" id="limit" value="25" />
+          </div>
+          <div class="field">
+            <label>Desde registro</label>
+            <input type="number" id="offset" value="0" />
+          </div>
+        </div>
+        <div class="panel-actions">
+          <button class="btn primary" id="btn-search">Buscar</button>
+          <button class="btn secondary" id="btn-clear">Limpiar</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Exportar</h2>
+          <div class="hint">CSV completo o XLSX con limite y columnas</div>
+        </div>
+        <div class="filters export">
+          <div class="field">
+            <label>Columnas a exportar (opcional)</label>
+            <input type="text" id="cols" placeholder="uid,anno_firma_contrato,modalidad_de_contratacion" />
+          </div>
+          <div class="field">
+            <label>Límite XLSX</label>
+            <input type="number" id="xlsx-limit" value="5000" />
+          </div>
+        </div>
+        <div class="panel-actions">
+          <button class="btn ghost" id="btn-export-csv">Export CSV</button>
+          <button class="btn ghost" id="btn-export-xlsx">Export XLSX</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Resultados</h2>
+          <div class="pill" id="total-pill">Total: 0</div>
+        </div>
+        <div class="pager">
+          <button class="btn ghost" id="btn-prev">Anterior</button>
+          <div class="pager-info" id="pager-info">Pagina 1 de 1</div>
+          <button class="btn ghost" id="btn-next">Siguiente</button>
+        </div>
+        <div class="table-wrap">
+          <table id="results-table">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Resumen</h2>
+        </div>
+        <div class="stats" id="stats-box">
+          <div class="stat">
+            <div class="label">Total</div>
+            <div class="value" id="stat-total">-</div>
+          </div>
+          <div class="stat">
+            <div class="label">Total cuantia proceso</div>
+            <div class="value" id="stat-cuantia-proceso">-</div>
+          </div>
+          <div class="stat">
+            <div class="label">Total cuantia contrato</div>
+            <div class="value" id="stat-cuantia-contrato">-</div>
+          </div>
+          <div class="stat">
+            <div class="label">Anno min</div>
+            <div class="value" id="stat-anno-min">-</div>
+          </div>
+          <div class="stat">
+            <div class="label">Anno max</div>
+            <div class="value" id="stat-anno-max">-</div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
