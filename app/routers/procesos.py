@@ -24,47 +24,50 @@ def get_procesos(
     offset: int = Query(0, ge=0),
 ):
     conn = get_conn()
-    from ..settings import get_settings
-    s = get_settings()
-    if s.filter_departamento:
-        departamento = s.filter_departamento
-    if s.filter_municipio:
-        municipio = s.filter_municipio
-    items = qlib.list_procesos(
-        conn,
-        anno,
-        anno_min,
-        anno_max,
-        modalidad,
-        destino,
-        entidad,
-        departamento,
-        municipio,
-        cuantia_min,
-        cuantia_max,
-        bpin,
-        estado,
-        q,
-        limit,
-        offset,
-    )
-    total = qlib.count_procesos(
-        conn,
-        anno,
-        anno_min,
-        anno_max,
-        modalidad,
-        destino,
-        entidad,
-        departamento,
-        municipio,
-        cuantia_min,
-        cuantia_max,
-        bpin,
-        estado,
-        q,
-    )
-    return {"total": total, "limit": limit, "offset": offset, "items": items}
+    try:
+        from ..settings import get_settings
+        s = get_settings()
+        if s.filter_departamento:
+            departamento = s.filter_departamento
+        if s.filter_municipio:
+            municipio = s.filter_municipio
+        items = qlib.list_procesos(
+            conn,
+            anno,
+            anno_min,
+            anno_max,
+            modalidad,
+            destino,
+            entidad,
+            departamento,
+            municipio,
+            cuantia_min,
+            cuantia_max,
+            bpin,
+            estado,
+            q,
+            limit,
+            offset,
+        )
+        total = qlib.count_procesos(
+            conn,
+            anno,
+            anno_min,
+            anno_max,
+            modalidad,
+            destino,
+            entidad,
+            departamento,
+            municipio,
+            cuantia_min,
+            cuantia_max,
+            bpin,
+            estado,
+            q,
+        )
+        return {"total": total, "limit": limit, "offset": offset, "items": items}
+    finally:
+        conn.close()
 
 @router.get("/catalogos/{catalogo}")
 def get_catalogo(
@@ -73,17 +76,20 @@ def get_catalogo(
     limit: int = Query(200, ge=1, le=2000),
 ):
     conn = get_conn()
-    from ..settings import get_settings
-    s = get_settings()
-    values = qlib.list_catalog(
-        conn,
-        catalogo,
-        limit,
-        q,
-        s.filter_departamento,
-        s.filter_municipio,
-    )
-    return {"catalogo": catalogo, "items": values}
+    try:
+        from ..settings import get_settings
+        s = get_settings()
+        values = qlib.list_catalog(
+            conn,
+            catalogo,
+            limit,
+            q,
+            s.filter_departamento,
+            s.filter_municipio,
+        )
+        return {"catalogo": catalogo, "items": values}
+    finally:
+        conn.close()
 
 @router.get("/stats/resumen")
 def get_stats(
@@ -102,25 +108,28 @@ def get_stats(
     q: Optional[str] = None,
 ):
     conn = get_conn()
-    from ..settings import get_settings
-    s = get_settings()
-    if s.filter_departamento:
-        departamento = s.filter_departamento
-    if s.filter_municipio:
-        municipio = s.filter_municipio
-    return qlib.get_stats(
-        conn,
-        anno,
-        anno_min,
-        anno_max,
-        modalidad,
-        destino,
-        entidad,
-        departamento,
-        municipio,
-        cuantia_min,
-        cuantia_max,
-        bpin,
-        estado,
-        q,
-    )
+    try:
+        from ..settings import get_settings
+        s = get_settings()
+        if s.filter_departamento:
+            departamento = s.filter_departamento
+        if s.filter_municipio:
+            municipio = s.filter_municipio
+        return qlib.get_stats(
+            conn,
+            anno,
+            anno_min,
+            anno_max,
+            modalidad,
+            destino,
+            entidad,
+            departamento,
+            municipio,
+            cuantia_min,
+            cuantia_max,
+            bpin,
+            estado,
+            q,
+        )
+    finally:
+        conn.close()

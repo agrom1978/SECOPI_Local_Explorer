@@ -1,8 +1,12 @@
 from datetime import datetime
+import logging
+import time
 from typing import Dict, Any, List, Optional
 import duckdb
 from .socrata import SocrataClient
 from .settings import get_settings
+
+logger = logging.getLogger(__name__)
 
 def ensure_sync_state(conn: duckdb.DuckDBPyConnection, dataset_id: str):
     conn.execute("""
@@ -32,6 +36,9 @@ def _parse_ts(v: Optional[str]) -> Optional[datetime]:
     if not v:
         return None
     return datetime.fromisoformat(v.replace("Z", "+00:00"))
+
+def _escape_socrata_value(value: str) -> str:
+    return value.replace("'", "''")
 
 def upsert_batch(conn: duckdb.DuckDBPyConnection, rows: List[Dict[str, Any]], field_map: Dict[str, str]) -> int:
     if not rows:
@@ -91,9 +98,11 @@ def run_snapshot(conn: duckdb.DuckDBPyConnection) -> int:
         f"anno_firma_contrato >= '{from_year}'",
     ]
     if s.filter_departamento:
-        where_clauses.append(f"departamento_entidad = '{s.filter_departamento}'")
+        safe_departamento = _escape_socrata_value(s.filter_departamento)
+        where_clauses.append(f"departamento_entidad = '{safe_departamento}'")
     if s.filter_municipio:
-        where_clauses.append(f"municipio_entidad = '{s.filter_municipio}'")
+        safe_municipio = _escape_socrata_value(s.filter_municipio)
+        where_clauses.append(f"municipio_entidad = '{safe_municipio}'")
     where = " AND ".join(where_clauses) if where_clauses else None
     order = ":updated_at ASC"
 
@@ -101,16 +110,49 @@ def run_snapshot(conn: duckdb.DuckDBPyConnection) -> int:
 
     total = 0
     max_updated = None
+    start_time = time.monotonic()
 
-    for batch in client.iter_query(dataset_id, s.select_str, where, order, s.page_limit):
-        total += upsert_batch(conn, batch, field_map)
-        for r in batch:
-            ts = _parse_ts(r.get(":updated_at"))
-            if ts and (max_updated is None or ts > max_updated):
-                max_updated = ts
+    try:
+        logger.info(
+            "Starting snapshot sync",
+            extra={
+                "dataset_id": dataset_id,
+                "where": where,
+                "order": order,
+                "page_limit": s.page_limit,
+            },
+        )
+        for batch in client.iter_query(dataset_id, s.select_str, where, order, s.page_limit):
+            logger.debug("Snapshot batch fetched", extra={"dataset_id": dataset_id, "batch_size": len(batch)})
+            total += upsert_batch(conn, batch, field_map)
+            for r in batch:
+                ts = _parse_ts(r.get(":updated_at"))
+                if ts and (max_updated is None or ts > max_updated):
+                    max_updated = ts
 
-    update_sync_state(conn, dataset_id, max_updated, "SNAPSHOT_OK", total, None)
-    return total
+        update_sync_state(conn, dataset_id, max_updated, "SNAPSHOT_OK", total, None)
+        logger.info(
+            "Snapshot sync completed",
+            extra={
+                "dataset_id": dataset_id,
+                "rows_upserted": total,
+                "max_updated": max_updated.isoformat() if max_updated else None,
+                "duration_s": round(time.monotonic() - start_time, 2),
+            },
+        )
+        return total
+    except Exception as e:
+        update_sync_state(conn, dataset_id, max_updated, "SNAPSHOT_ERROR", total, str(e))
+        logger.exception(
+            "Snapshot sync failed",
+            extra={
+                "dataset_id": dataset_id,
+                "rows_upserted": total,
+                "max_updated": max_updated.isoformat() if max_updated else None,
+                "duration_s": round(time.monotonic() - start_time, 2),
+            },
+        )
+        raise
 
 def run_incremental(conn: duckdb.DuckDBPyConnection) -> int:
     s = get_settings()
@@ -122,11 +164,14 @@ def run_incremental(conn: duckdb.DuckDBPyConnection) -> int:
     last = get_last_dataset_updated_at(conn, dataset_id)
     where_clauses = []
     if last:
-        where_clauses.append(f":updated_at > '{last.isoformat()}'")
+        safe_last = _escape_socrata_value(last.isoformat())
+        where_clauses.append(f":updated_at > '{safe_last}'")
     if s.filter_departamento:
-        where_clauses.append(f"departamento_entidad = '{s.filter_departamento}'")
+        safe_departamento = _escape_socrata_value(s.filter_departamento)
+        where_clauses.append(f"departamento_entidad = '{safe_departamento}'")
     if s.filter_municipio:
-        where_clauses.append(f"municipio_entidad = '{s.filter_municipio}'")
+        safe_municipio = _escape_socrata_value(s.filter_municipio)
+        where_clauses.append(f"municipio_entidad = '{safe_municipio}'")
     where = " AND ".join(where_clauses) if where_clauses else None
     order = ":updated_at ASC"
 
@@ -134,16 +179,46 @@ def run_incremental(conn: duckdb.DuckDBPyConnection) -> int:
 
     total = 0
     max_updated = last
+    start_time = time.monotonic()
 
     try:
+        logger.info(
+            "Starting incremental sync",
+            extra={
+                "dataset_id": dataset_id,
+                "where": where,
+                "order": order,
+                "page_limit": s.page_limit,
+                "last_updated_at": last.isoformat() if last else None,
+            },
+        )
         for batch in client.iter_query(dataset_id, s.select_str, where, order, s.page_limit):
+            logger.debug("Incremental batch fetched", extra={"dataset_id": dataset_id, "batch_size": len(batch)})
             total += upsert_batch(conn, batch, field_map)
             for r in batch:
                 ts = _parse_ts(r.get(":updated_at"))
                 if ts and (max_updated is None or ts > max_updated):
                     max_updated = ts
         update_sync_state(conn, dataset_id, max_updated, "INCREMENTAL_OK", total, None)
+        logger.info(
+            "Incremental sync completed",
+            extra={
+                "dataset_id": dataset_id,
+                "rows_upserted": total,
+                "max_updated": max_updated.isoformat() if max_updated else None,
+                "duration_s": round(time.monotonic() - start_time, 2),
+            },
+        )
         return total
     except Exception as e:
         update_sync_state(conn, dataset_id, last, "INCREMENTAL_ERROR", total, str(e))
+        logger.exception(
+            "Incremental sync failed",
+            extra={
+                "dataset_id": dataset_id,
+                "rows_upserted": total,
+                "max_updated": max_updated.isoformat() if max_updated else None,
+                "duration_s": round(time.monotonic() - start_time, 2),
+            },
+        )
         raise
