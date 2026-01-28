@@ -41,7 +41,8 @@ const visibleColumns = [
 ];
 
 function val(id) {
-  return document.getElementById(id).value.trim();
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : "";
 }
 
 function buildQuery() {

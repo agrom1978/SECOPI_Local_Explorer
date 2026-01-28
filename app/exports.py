@@ -71,7 +71,10 @@ def _validate_cols(cols: Optional[List[str]]) -> List[str]:
         return ["*"]
     # Use catalog from DuckDB to avoid invalid columns
     conn = get_conn()
-    available = {r[1] for r in conn.execute("PRAGMA table_info('procesos_secop1')").fetchall()}
+    try:
+        available = {r[1] for r in conn.execute("PRAGMA table_info('procesos_secop1')").fetchall()}
+    finally:
+        conn.close()
     invalid = [c for c in cols if c not in available]
     if invalid:
         raise ValueError(f"Invalid cols: {', '.join(invalid)}")
@@ -117,13 +120,17 @@ def export_csv(
     try:
         sel_cols = _validate_cols(_parse_cols(cols))
     except ValueError as exc:
+        conn.close()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
         path = tmp.name
 
-    select_list = "*" if sel_cols == ["*"] else ", ".join(sel_cols)
-    sql = f"SELECT {select_list} FROM procesos_secop1 {where_clause} ORDER BY dataset_updated_at DESC"
-    conn.execute(f"COPY ({sql}) TO '{path}' (HEADER, DELIMITER ',')", params)
+    try:
+        select_list = "*" if sel_cols == ["*"] else ", ".join(sel_cols)
+        sql = f"SELECT {select_list} FROM procesos_secop1 {where_clause} ORDER BY dataset_updated_at DESC"
+        conn.execute(f"COPY ({sql}) TO '{path}' (HEADER, DELIMITER ',')", params)
+    finally:
+        conn.close()
     background_tasks.add_task(os.remove, path)
     return FileResponse(path, filename="procesos_export.csv", media_type="text/csv", background=background_tasks)
 
@@ -168,13 +175,17 @@ def export_xlsx(
     try:
         sel_cols = _validate_cols(_parse_cols(cols))
     except ValueError as exc:
+        conn.close()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    select_list = "*" if sel_cols == ["*"] else ", ".join(sel_cols)
-    sql = f"SELECT {select_list} FROM procesos_secop1 {where_clause} ORDER BY dataset_updated_at DESC LIMIT ?"
-    params = params + [limit]
-    cur = conn.execute(sql, params)
-    rows = cur.fetchall()
-    cols = [c[0] for c in cur.description]
+    try:
+        select_list = "*" if sel_cols == ["*"] else ", ".join(sel_cols)
+        sql = f"SELECT {select_list} FROM procesos_secop1 {where_clause} ORDER BY dataset_updated_at DESC LIMIT ?"
+        params = params + [limit]
+        cur = conn.execute(sql, params)
+        rows = cur.fetchall()
+        cols = [c[0] for c in cur.description]
+    finally:
+        conn.close()
 
     wb = Workbook()
     ws = wb.active

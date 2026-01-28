@@ -1,8 +1,6 @@
 import duckdb
 from .settings import get_settings
 
-_conn = None
-
 def init_db(conn: duckdb.DuckDBPyConnection):
     conn.execute("""
     CREATE TABLE IF NOT EXISTS procesos_secop1 (
@@ -100,9 +98,7 @@ def init_db(conn: duckdb.DuckDBPyConnection):
     """)
 
 def get_conn() -> duckdb.DuckDBPyConnection:
-    global _conn
-    if _conn is None:
-        s = get_settings()
-        _conn = duckdb.connect(s.duckdb_path)
-        init_db(_conn)
-    return _conn
+    s = get_settings()
+    conn = duckdb.connect(s.duckdb_path)
+    init_db(conn)
+    return conn

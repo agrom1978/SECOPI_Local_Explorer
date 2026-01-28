@@ -51,6 +51,7 @@
           <h2>Filtros</h2>
           <div class="pill">Filtro permanente activo</div>
         </div>
+        <div class="meta-line">Entidad contratante fija: Alcaldía de Albania</div>
         <div class="quick-filters">
           <button class="chip" data-estado="CONVOCADO">Convocado</button>
           <button class="chip" data-estado="ADJUDICADO">Adjudicado</button>
@@ -58,10 +59,6 @@
           <button class="chip" data-estado="">Limpiar estado</button>
         </div>
         <div class="filters">
-          <div class="field">
-            <label>Año firma contrato</label>
-            <input type="number" id="anno" placeholder="2019" />
-          </div>
           <div class="field">
             <label>Año (desde)</label>
             <input type="number" id="anno-min" placeholder="2018" />
@@ -75,28 +72,8 @@
             <input type="text" id="modalidad" placeholder="Licitacion Publica" />
           </div>
           <div class="field">
-            <label>Destino del gasto</label>
-            <input type="text" id="destino" placeholder="No aplica" />
-          </div>
-          <div class="field">
-            <label>Nombre de entidad (contiene)</label>
-            <input type="text" id="entidad" placeholder="ALCALDIA" />
-          </div>
-          <div class="field">
-            <label>Cuantía (mín)</label>
-            <input type="number" id="cuantia-min" placeholder="0" />
-          </div>
-          <div class="field">
-            <label>Cuantía (máx)</label>
-            <input type="number" id="cuantia-max" placeholder="100000000" />
-          </div>
-          <div class="field">
             <label>Estado</label>
             <input type="text" id="estado" placeholder="CONVOCADO" />
-          </div>
-          <div class="field">
-            <label>Búsqueda libre</label>
-            <input type="text" id="q" placeholder="obra" />
           </div>
           <div class="field">
             <label>Resultados por página</label>
@@ -107,6 +84,31 @@
             <input type="number" id="offset" value="0" />
           </div>
         </div>
+        <details class="filters-advanced">
+          <summary>Filtros avanzados</summary>
+          <div class="filters">
+            <div class="field">
+              <label>Año firma contrato</label>
+              <input type="number" id="anno" placeholder="2019" />
+            </div>
+            <div class="field">
+              <label>Destino del gasto</label>
+              <input type="text" id="destino" placeholder="Funcionamiento / Inversion" />
+            </div>
+            <div class="field">
+              <label>Cuantía (mín)</label>
+              <input type="number" id="cuantia-min" placeholder="0" />
+            </div>
+            <div class="field">
+              <label>Cuantía (máx)</label>
+              <input type="number" id="cuantia-max" placeholder="100000000" />
+            </div>
+            <div class="field">
+              <label>Búsqueda libre</label>
+              <input type="text" id="q" placeholder="obra" />
+            </div>
+          </div>
+        </details>
         <div class="panel-actions">
           <button class="btn primary" id="btn-search">Buscar</button>
           <button class="btn secondary" id="btn-clear">Limpiar</button>

@@ -42,6 +42,7 @@ API
 - `GET /stats/resumen`
 - `POST /sync/run?mode=snapshot|incremental`
 - `GET /sync/status`
+- `GET /sync/health`
 - `GET /export/csv`
 - `GET /export/xlsx`
 
@@ -52,3 +53,30 @@ Abrir en el navegador: `http://127.0.0.1:8001/`
 Nota sobre export
 -----------------
 `/export/xlsx` limpia caracteres ilegales para Excel.
+
+Testing
+-------
+Ejecutar pruebas unitarias:
+
+```
+python -m unittest discover -s tests
+```
+
+Healthcheck
+-----------
+Validar conectividad a DuckDB y estado básico de sincronización:
+
+```
+GET /sync/health
+```
+
+Mejoras futuras (backlog)
+-------------------------
+1) Ampliar `/sync/health` con validaciones adicionales (por ejemplo, antigüedad del último sync).
+2) Documentar todas las variables de entorno en una tabla de configuración.
+3) Agregar pruebas unitarias para `_build_filters`, paginación y rangos de cuantía/anno.
+4) Extraer validaciones de filtros a un módulo reutilizable.
+5) Centralizar configuración de logging (formato, nivel, destino) para producción.
+6) Añadir caché con TTL para catálogos frecuentes.
+7) Agregar nuevos endpoints de estadísticas por modalidad/estado/entidad.
+8) Documentar ejemplos de parámetros para exportaciones CSV/XLSX.

@@ -65,12 +65,8 @@ def _build_filters(
     if entidad:
         clauses.append("nombre_entidad ILIKE ?")
         params.append(f"%{entidad}%")
-    if departamento:
-        clauses.append("UPPER(departamento_entidad) = UPPER(?)")
-        params.append(departamento)
-    if municipio:
-        clauses.append("UPPER(municipio_entidad) = UPPER(?)")
-        params.append(municipio)
+    _add_case_insensitive_filter(clauses, params, "departamento_entidad", departamento)
+    _add_case_insensitive_filter(clauses, params, "municipio_entidad", municipio)
     if cuantia_min is not None:
         clauses.append("cuantia_contrato >= ?")
         params.append(cuantia_min)
@@ -92,6 +88,17 @@ def _build_filters(
         return "", params
 
     return "WHERE " + " AND ".join(clauses), params
+
+
+def _add_case_insensitive_filter(
+    clauses: List[str],
+    params: List[Any],
+    column: str,
+    value: Optional[str],
+) -> None:
+    if value:
+        clauses.append(f"UPPER({column}) = UPPER(?)")
+        params.append(value)
 
 
 def _rows_to_dicts(cursor: duckdb.DuckDBPyConnection, rows: List[tuple]) -> List[Dict[str, Any]]:
@@ -194,12 +201,11 @@ def list_catalog(
     if q:
         sql += f" AND CAST({column} AS VARCHAR) ILIKE ?"
         params.append(f"%{q}%")
-    if departamento:
-        sql += " AND departamento_entidad = ?"
-        params.append(departamento)
-    if municipio:
-        sql += " AND municipio_entidad = ?"
-        params.append(municipio)
+    extra_clauses: List[str] = []
+    _add_case_insensitive_filter(extra_clauses, params, "departamento_entidad", departamento)
+    _add_case_insensitive_filter(extra_clauses, params, "municipio_entidad", municipio)
+    if extra_clauses:
+        sql += " AND " + " AND ".join(extra_clauses)
 
     sql += " ORDER BY value LIMIT ?"
     params.append(limit)
