@@ -81,6 +81,44 @@ fields:
   sector_pliegos_tipo: sector_pliegos_tipo
 system_fields:
   updated_at: ":updated_at"
+export_exclude:
+  - uid
+  - anno_cargue_secop
+  - nivel_entidad
+  - orden_entidad
+  - nombre_entidad
+  - nit_de_la_entidad
+  - c_digo_de_la_entidad
+  - id_modalidad
+  - causal_de_otras_formas_de
+  - id_regimen_de_contratacion
+  - nombre_regimen_de_contratacion
+  - id_objeto_a_contratar
+  - municipio_de_obtencion
+  - municipio_de_entrega
+  - municipios_ejecucion
+  - fecha_de_cargue_en_el_secop
+  - numero_de_constancia
+  - id_grupo
+  - nombre_grupo
+  - id_familia
+  - nombre_familia
+  - id_clase
+  - nombre_clase
+  - id_adjudicacion
+  - dpto_y_muni_contratista
+  - id_sub_unidad_ejecutora
+  - nombre_sub_unidad_ejecutora
+  - ruta_proceso_en_secop_i
+  - moneda
+  - es_postconflicto
+  - marcacion_adiciones
+  - posicion_rubro
+  - nombre_rubro
+  - valor_rubro
+  - sexo_replegal
+  - pilar_acuerdo_paz
+  - punto_acuerdo_paz
 select:
   - uid
   - anno_cargue_secop

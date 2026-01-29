@@ -9,6 +9,7 @@ const statTotalTop = document.getElementById("stat-total-top");
 const statPageTop = document.getElementById("stat-page-top");
 const statSyncTop = document.getElementById("stat-sync-top");
 const statSyncStatus = document.getElementById("stat-sync-status");
+const themeToggle = document.getElementById("theme-toggle");
 
 const btnPrev = document.getElementById("btn-prev");
 const btnNext = document.getElementById("btn-next");
@@ -31,14 +32,62 @@ const fields = {
 };
 
 const visibleColumns = [
-  "uid",
-  "anno_firma_contrato",
-  "modalidad_de_contratacion",
+  "numero_de_proceso",
+  "detalle_del_objeto_a_contratar",
   "estado_del_proceso",
-  "cuantia_proceso",
-  "nombre_entidad",
-  "dataset_updated_at",
+  "nom_razon_social_contratista",
+  "cuantia_contrato",
 ];
+
+const THEME_KEY = "secop-theme";
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  if (!themeToggle) return;
+  const isDark = theme === "dark";
+  themeToggle.setAttribute("aria-pressed", String(isDark));
+  themeToggle.textContent = isDark ? "Tema oscuro" : "Tema claro";
+}
+
+function initTheme() {
+  const stored = localStorage.getItem(THEME_KEY);
+  const media = window.matchMedia("(prefers-color-scheme: dark)");
+  const initial = stored === "light" || stored === "dark" ? stored : media.matches ? "dark" : "light";
+  applyTheme(initial);
+  if (stored !== "light" && stored !== "dark") {
+    media.addEventListener("change", (event) => {
+      applyTheme(event.matches ? "dark" : "light");
+    });
+  }
+}
+
+async function loadCatalog(selectId, catalogo) {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  try {
+    const res = await fetch(`/catalogos/${catalogo}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const items = Array.isArray(data.items) ? data.items : [];
+    const current = select.value;
+    select.innerHTML = "";
+    const optAll = document.createElement("option");
+    optAll.value = "";
+    optAll.textContent = "Todos";
+    select.appendChild(optAll);
+    items.forEach((item) => {
+      const opt = document.createElement("option");
+      opt.value = item;
+      opt.textContent = item;
+      select.appendChild(opt);
+    });
+    if (current && items.includes(current)) {
+      select.value = current;
+    }
+  } catch (_) {
+    // Silently ignore catalog load errors.
+  }
+}
 
 function val(id) {
   const el = document.getElementById(id);
@@ -215,7 +264,7 @@ document.getElementById("btn-clear").addEventListener("click", () => {
 document.getElementById("btn-export-csv").addEventListener("click", exportCsv);
 document.getElementById("btn-export-xlsx").addEventListener("click", exportXlsx);
 
-document.querySelectorAll(".chip").forEach((chip) => {
+document.querySelectorAll(".quick-filters .chip").forEach((chip) => {
   chip.addEventListener("click", () => {
     document.querySelectorAll(".chip").forEach((c) => c.classList.remove("active"));
     chip.classList.add("active");
@@ -225,5 +274,17 @@ document.querySelectorAll(".chip").forEach((chip) => {
   });
 });
 
+if (themeToggle) {
+  themeToggle.addEventListener("click", () => {
+    const current = document.documentElement.dataset.theme || "dark";
+    const next = current === "dark" ? "light" : "dark";
+    localStorage.setItem(THEME_KEY, next);
+    applyTheme(next);
+  });
+}
+
+initTheme();
+loadCatalog(fields.estado, "estado_del_proceso");
+loadCatalog(fields.destino, "destino_gasto");
 loadProcesos();
 loadStatus();

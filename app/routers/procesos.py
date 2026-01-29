@@ -27,6 +27,10 @@ def get_procesos(
     try:
         from ..settings import get_settings
         s = get_settings()
+        entidad_exact = False
+        if s.filter_entidad:
+            entidad = s.filter_entidad
+            entidad_exact = True
         if s.filter_departamento:
             departamento = s.filter_departamento
         if s.filter_municipio:
@@ -39,6 +43,7 @@ def get_procesos(
             modalidad,
             destino,
             entidad,
+            entidad_exact,
             departamento,
             municipio,
             cuantia_min,
@@ -57,6 +62,7 @@ def get_procesos(
             modalidad,
             destino,
             entidad,
+            entidad_exact,
             departamento,
             municipio,
             cuantia_min,
@@ -111,6 +117,10 @@ def get_stats(
     try:
         from ..settings import get_settings
         s = get_settings()
+        entidad_exact = False
+        if s.filter_entidad:
+            entidad = s.filter_entidad
+            entidad_exact = True
         if s.filter_departamento:
             departamento = s.filter_departamento
         if s.filter_municipio:
@@ -123,6 +133,7 @@ def get_stats(
             modalidad,
             destino,
             entidad,
+            entidad_exact,
             departamento,
             municipio,
             cuantia_min,

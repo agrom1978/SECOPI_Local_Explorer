@@ -1,6 +1,8 @@
 from typing import Any, Dict, List, Optional, Tuple
 import duckdb
 
+from .settings import get_settings
+
 ALLOWED_CATALOG_COLUMNS = {
     "anno_firma_contrato",
     "modalidad_de_contratacion",
@@ -14,6 +16,7 @@ ALLOWED_CATALOG_COLUMNS = {
 
 SELECT_COLUMNS = [
     "uid",
+    "numero_de_proceso",
     "anno_firma_contrato",
     "anno_cargue_secop",
     "modalidad_de_contratacion",
@@ -25,9 +28,23 @@ SELECT_COLUMNS = [
     "cuantia_contrato",
     "cuantia_proceso",
     "codigo_bpin",
+    "detalle_del_objeto_a_contratar",
+    "nom_razon_social_contratista",
     "ultima_actualizacion",
     "dataset_updated_at",
 ]
+
+
+def _get_preview_columns() -> List[str]:
+    excluded = set(get_settings().export_exclude or [])
+    return [c for c in SELECT_COLUMNS if c not in excluded]
+
+def _normalize_sql(expr: str) -> str:
+    return (
+        "UPPER(translate("
+        + expr
+        + ", 'ÁÉÍÓÚÜÑáéíóúüñ', 'AEIOUUNaeiouun'))"
+    )
 
 def _build_filters(
     anno: Optional[int],
@@ -36,6 +53,7 @@ def _build_filters(
     modalidad: Optional[str],
     destino: Optional[str],
     entidad: Optional[str],
+    entidad_exact: bool,
     departamento: Optional[str],
     municipio: Optional[str],
     cuantia_min: Optional[float],
@@ -63,8 +81,12 @@ def _build_filters(
         clauses.append("destino_gasto = ?")
         params.append(destino)
     if entidad:
-        clauses.append("nombre_entidad ILIKE ?")
-        params.append(f"%{entidad}%")
+        if entidad_exact:
+            clauses.append(f"{_normalize_sql('nombre_entidad')} = {_normalize_sql('?')}")
+            params.append(entidad)
+        else:
+            clauses.append("nombre_entidad ILIKE ?")
+            params.append(f"%{entidad}%")
     _add_case_insensitive_filter(clauses, params, "departamento_entidad", departamento)
     _add_case_insensitive_filter(clauses, params, "municipio_entidad", municipio)
     if cuantia_min is not None:
@@ -114,6 +136,7 @@ def list_procesos(
     modalidad: Optional[str],
     destino: Optional[str],
     entidad: Optional[str],
+    entidad_exact: bool,
     departamento: Optional[str],
     municipio: Optional[str],
     cuantia_min: Optional[float],
@@ -131,6 +154,7 @@ def list_procesos(
         modalidad,
         destino,
         entidad,
+        entidad_exact,
         departamento,
         municipio,
         cuantia_min,
@@ -140,7 +164,8 @@ def list_procesos(
         q,
     )
 
-    sql = f"SELECT {', '.join(SELECT_COLUMNS)} FROM procesos_secop1 {where_clause} ORDER BY dataset_updated_at DESC LIMIT ? OFFSET ?"
+    preview_columns = _get_preview_columns()
+    sql = f"SELECT {', '.join(preview_columns)} FROM procesos_secop1 {where_clause} ORDER BY dataset_updated_at DESC LIMIT ? OFFSET ?"
     params.extend([limit, offset])
     cur = conn.execute(sql, params)
     rows = cur.fetchall()
@@ -155,6 +180,7 @@ def count_procesos(
     modalidad: Optional[str],
     destino: Optional[str],
     entidad: Optional[str],
+    entidad_exact: bool,
     departamento: Optional[str],
     municipio: Optional[str],
     cuantia_min: Optional[float],
@@ -170,6 +196,7 @@ def count_procesos(
         modalidad,
         destino,
         entidad,
+        entidad_exact,
         departamento,
         municipio,
         cuantia_min,
@@ -222,6 +249,7 @@ def get_stats(
     modalidad: Optional[str],
     destino: Optional[str],
     entidad: Optional[str],
+    entidad_exact: bool,
     departamento: Optional[str],
     municipio: Optional[str],
     cuantia_min: Optional[float],
@@ -237,6 +265,7 @@ def get_stats(
         modalidad,
         destino,
         entidad,
+        entidad_exact,
         departamento,
         municipio,
         cuantia_min,

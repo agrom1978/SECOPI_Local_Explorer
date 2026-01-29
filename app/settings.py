@@ -17,11 +17,13 @@ class Settings:
     page_limit: int
     filter_departamento: str | None
     filter_municipio: str | None
+    filter_entidad: str | None
     primary_key: str
     fields: dict
     system_fields: dict
     select: list
     select_str: str
+    export_exclude: list
 
 _SETTINGS: Settings | None = None
 
@@ -41,12 +43,14 @@ def get_settings() -> Settings:
     page_limit = int(os.getenv("PAGE_LIMIT", "50000"))
     filter_departamento = os.getenv("FILTER_DEPARTAMENTO") or None
     filter_municipio = os.getenv("FILTER_MUNICIPIO") or None
+    filter_entidad = os.getenv("FILTER_ENTIDAD", "LA GUAJIRA - ALCALDiA MUNICIPIO DE ALBANIA") or None
 
     with open("./config/dataset.yml", "r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
 
     select = cfg["select"]
     select_str = ",".join(select)
+    export_exclude = cfg.get("export_exclude", []) or []
 
     _SETTINGS = Settings(
         socrata_domain=socrata_domain,
@@ -59,10 +63,12 @@ def get_settings() -> Settings:
         page_limit=page_limit,
         filter_departamento=filter_departamento,
         filter_municipio=filter_municipio,
+        filter_entidad=filter_entidad,
         primary_key=cfg["primary_key"],
         fields=cfg["fields"],
         system_fields=cfg["system_fields"],
         select=select,
         select_str=select_str,
+        export_exclude=export_exclude,
     )
     return _SETTINGS

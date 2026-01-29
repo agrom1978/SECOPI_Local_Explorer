@@ -16,13 +16,19 @@ from . import query as qlib
 router = APIRouter()
 
 
-def _apply_permanent_filters(departamento: Optional[str], municipio: Optional[str]):
+def _apply_permanent_filters(
+    entidad: Optional[str],
+    departamento: Optional[str],
+    municipio: Optional[str],
+):
     s = get_settings()
+    if s.filter_entidad:
+        entidad = s.filter_entidad
     if s.filter_departamento:
         departamento = s.filter_departamento
     if s.filter_municipio:
         municipio = s.filter_municipio
-    return departamento, municipio
+    return entidad, departamento, municipio
 
 
 def _build_where(
@@ -32,6 +38,7 @@ def _build_where(
     modalidad: Optional[str],
     destino: Optional[str],
     entidad: Optional[str],
+    entidad_exact: bool,
     departamento: Optional[str],
     municipio: Optional[str],
     cuantia_min: Optional[float],
@@ -47,6 +54,7 @@ def _build_where(
         modalidad,
         destino,
         entidad,
+        entidad_exact,
         departamento,
         municipio,
         cuantia_min,
@@ -66,18 +74,27 @@ def _parse_cols(cols: Optional[str]) -> Optional[List[str]]:
     return parts
 
 
-def _validate_cols(cols: Optional[List[str]]) -> List[str]:
-    if not cols:
-        return ["*"]
+def _get_available_columns(conn) -> List[str]:
+    return [r[1] for r in conn.execute("PRAGMA table_info('procesos_secop1')").fetchall()]
+
+
+def _get_excluded_columns() -> set:
+    return set(get_settings().export_exclude or [])
+
+
+def _validate_cols(conn, cols: Optional[List[str]]) -> List[str]:
     # Use catalog from DuckDB to avoid invalid columns
-    conn = get_conn()
-    try:
-        available = {r[1] for r in conn.execute("PRAGMA table_info('procesos_secop1')").fetchall()}
-    finally:
-        conn.close()
-    invalid = [c for c in cols if c not in available]
+    available = _get_available_columns(conn)
+    available_set = set(available)
+    excluded = _get_excluded_columns()
+    if not cols:
+        return [c for c in available if c not in excluded]
+    invalid = [c for c in cols if c not in available_set]
     if invalid:
         raise ValueError(f"Invalid cols: {', '.join(invalid)}")
+    forbidden = [c for c in cols if c in excluded]
+    if forbidden:
+        raise ValueError(f"Excluded cols: {', '.join(forbidden)}")
     return cols
 
 
@@ -99,7 +116,7 @@ def export_csv(
     q: Optional[str] = None,
     cols: Optional[str] = None,
 ):
-    departamento, municipio = _apply_permanent_filters(departamento, municipio)
+    entidad, departamento, municipio = _apply_permanent_filters(entidad, departamento, municipio)
     where_clause, params = _build_where(
         anno,
         anno_min,
@@ -107,6 +124,7 @@ def export_csv(
         modalidad,
         destino,
         entidad,
+        bool(get_settings().filter_entidad),
         departamento,
         municipio,
         cuantia_min,
@@ -118,7 +136,7 @@ def export_csv(
 
     conn = get_conn()
     try:
-        sel_cols = _validate_cols(_parse_cols(cols))
+        sel_cols = _validate_cols(conn, _parse_cols(cols))
     except ValueError as exc:
         conn.close()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -126,7 +144,7 @@ def export_csv(
         path = tmp.name
 
     try:
-        select_list = "*" if sel_cols == ["*"] else ", ".join(sel_cols)
+        select_list = ", ".join(sel_cols)
         sql = f"SELECT {select_list} FROM procesos_secop1 {where_clause} ORDER BY dataset_updated_at DESC"
         conn.execute(f"COPY ({sql}) TO '{path}' (HEADER, DELIMITER ',')", params)
     finally:
@@ -154,7 +172,7 @@ def export_xlsx(
     limit: int = Query(20000, ge=1, le=200000),
     cols: Optional[str] = None,
 ):
-    departamento, municipio = _apply_permanent_filters(departamento, municipio)
+    entidad, departamento, municipio = _apply_permanent_filters(entidad, departamento, municipio)
     where_clause, params = _build_where(
         anno,
         anno_min,
@@ -162,6 +180,7 @@ def export_xlsx(
         modalidad,
         destino,
         entidad,
+        bool(get_settings().filter_entidad),
         departamento,
         municipio,
         cuantia_min,
@@ -173,12 +192,12 @@ def export_xlsx(
 
     conn = get_conn()
     try:
-        sel_cols = _validate_cols(_parse_cols(cols))
+        sel_cols = _validate_cols(conn, _parse_cols(cols))
     except ValueError as exc:
         conn.close()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     try:
-        select_list = "*" if sel_cols == ["*"] else ", ".join(sel_cols)
+        select_list = ", ".join(sel_cols)
         sql = f"SELECT {select_list} FROM procesos_secop1 {where_clause} ORDER BY dataset_updated_at DESC LIMIT ?"
         params = params + [limit]
         cur = conn.execute(sql, params)

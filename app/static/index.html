@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>SECOP I Local Explorer</title>
-    <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260129" />
   </head>
   <body>
     <div class="page">
@@ -20,6 +20,7 @@
             <button class="btn primary" id="btn-refresh">Cargar datos</button>
             <button class="btn ghost" id="btn-stats">Ver resumen</button>
             <button class="btn secondary" id="btn-status">Ver estado</button>
+            <button class="chip theme-toggle" id="theme-toggle" type="button" aria-pressed="false">Tema</button>
           </div>
           <div class="meta-line" id="status-line">Estado: listo</div>
         </div>
@@ -73,7 +74,9 @@
           </div>
           <div class="field">
             <label>Estado</label>
-            <input type="text" id="estado" placeholder="CONVOCADO" />
+            <select id="estado">
+              <option value="">Todos</option>
+            </select>
           </div>
           <div class="field">
             <label>Resultados por página</label>
@@ -93,7 +96,9 @@
             </div>
             <div class="field">
               <label>Destino del gasto</label>
-              <input type="text" id="destino" placeholder="Funcionamiento / Inversion" />
+              <select id="destino">
+                <option value="">Todos</option>
+              </select>
             </div>
             <div class="field">
               <label>Cuantía (mín)</label>
@@ -183,6 +188,6 @@
       </section>
     </div>
 
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v=20260129"></script>
   </body>
 </html>
