@@ -22,7 +22,10 @@
             <button class="btn secondary" id="btn-status">Ver estado</button>
             <button class="chip theme-toggle" id="theme-toggle" type="button" aria-pressed="false">Tema</button>
           </div>
-          <div class="meta-line" id="status-line">Estado: listo</div>
+          <div class="meta-line status-line">
+            <span id="status-line">Estado: listo</span>
+            <span class="spinner hidden" id="loading-spinner" aria-hidden="true"></span>
+          </div>
         </div>
       </header>
 
@@ -80,7 +83,8 @@
           </div>
           <div class="field">
             <label>Resultados por página</label>
-            <input type="number" id="limit" value="25" />
+            <input type="number" id="limit" value="25" min="1" max="1000" />
+            <small class="field-error hidden" id="limit-error"></small>
           </div>
           <div class="field">
             <label>Desde registro</label>
