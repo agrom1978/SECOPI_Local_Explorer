@@ -10,6 +10,9 @@ const statPageTop = document.getElementById("stat-page-top");
 const statSyncTop = document.getElementById("stat-sync-top");
 const statSyncStatus = document.getElementById("stat-sync-status");
 const themeToggle = document.getElementById("theme-toggle");
+const loadingSpinner = document.getElementById("loading-spinner");
+const limitError = document.getElementById("limit-error");
+let loadingCount = 0;
 
 const btnPrev = document.getElementById("btn-prev");
 const btnNext = document.getElementById("btn-next");
@@ -61,7 +64,26 @@ function initTheme() {
   }
 }
 
-async function loadCatalog(selectId, catalogo) {
+function populateSelect(select, items, allLabel = "Todos") {
+  if (!select) return;
+  const current = select.value;
+  select.innerHTML = "";
+  const optAll = document.createElement("option");
+  optAll.value = "";
+  optAll.textContent = allLabel;
+  select.appendChild(optAll);
+  items.forEach((item) => {
+    const opt = document.createElement("option");
+    opt.value = item;
+    opt.textContent = item;
+    select.appendChild(opt);
+  });
+  if (current && items.includes(current)) {
+    select.value = current;
+  }
+}
+
+async function loadCatalog(selectId, catalogo, allLabel = "Todos") {
   const select = document.getElementById(selectId);
   if (!select) return;
   try {
@@ -69,23 +91,28 @@ async function loadCatalog(selectId, catalogo) {
     if (!res.ok) return;
     const data = await res.json();
     const items = Array.isArray(data.items) ? data.items : [];
-    const current = select.value;
-    select.innerHTML = "";
-    const optAll = document.createElement("option");
-    optAll.value = "";
-    optAll.textContent = "Todos";
-    select.appendChild(optAll);
-    items.forEach((item) => {
-      const opt = document.createElement("option");
-      opt.value = item;
-      opt.textContent = item;
-      select.appendChild(opt);
-    });
-    if (current && items.includes(current)) {
-      select.value = current;
-    }
+    populateSelect(select, items, allLabel);
   } catch (_) {
-    // Silently ignore catalog load errors.
+    showAlert(`No se pudo cargar el catalogo ${catalogo}.`);
+  }
+}
+
+async function loadYearCatalog(selectIds) {
+  try {
+    const res = await fetch("/catalogos/anno_firma_contrato");
+    if (!res.ok) return;
+    const data = await res.json();
+    const years = (Array.isArray(data.items) ? data.items : [])
+      .map((item) => Number(item))
+      .filter((item) => Number.isFinite(item))
+      .sort((a, b) => a - b)
+      .map((item) => String(item));
+    selectIds.forEach((id) => {
+      const select = document.getElementById(id);
+      populateSelect(select, years, "Todos");
+    });
+  } catch (_) {
+    showAlert("No se pudo cargar los años de firma de contrato.");
   }
 }
 
@@ -154,55 +181,122 @@ function showAlert(msg) {
   alertBox.textContent = msg;
 }
 
-async function loadProcesos() {
-  statusLine.textContent = "Estado: cargando...";
-  const params = buildQuery();
-  const res = await fetch(`/procesos?${params.toString()}`);
-  if (!res.ok) {
-    statusLine.textContent = "Estado: error";
-    showAlert("No se pudo cargar /procesos. Revisa el servidor.");
+function setFieldError(element, message) {
+  if (!element) return;
+  if (!message) {
+    element.textContent = "";
+    element.classList.add("hidden");
     return;
   }
-  const data = await res.json();
-  totalPill.textContent = `Total: ${data.total}`;
-  const limit = Number(params.get("limit") || 25);
-  const offset = Number(params.get("offset") || 0);
-  const page = Math.floor(offset / limit) + 1;
-  const pages = Math.max(1, Math.ceil((data.total || 0) / limit));
-  pagerInfo.textContent = `Pagina ${page} de ${pages}`;
-  statTotalTop.textContent = data.total ?? "-";
-  statPageTop.textContent = `${page} / ${pages}`;
-  btnPrev.disabled = offset <= 0;
-  btnNext.disabled = page >= pages;
-  renderTable(data.items || []);
-  statusLine.textContent = "Estado: listo";
-  showAlert("");
+  element.textContent = message;
+  element.classList.remove("hidden");
+}
+
+function setLoading(isLoading) {
+  if (!loadingSpinner) return;
+  if (isLoading) {
+    loadingCount += 1;
+  } else {
+    loadingCount = Math.max(0, loadingCount - 1);
+  }
+  if (loadingCount > 0) {
+    loadingSpinner.classList.remove("hidden");
+  } else {
+    loadingSpinner.classList.add("hidden");
+  }
+}
+
+function getLimitValue() {
+  const raw = Number(val(fields.limit) || 25);
+  const limit = Number.isFinite(raw) ? raw : 25;
+  if (limit < 1 || limit > 1000) {
+    const message = "El limite por pagina debe estar entre 1 y 1000.";
+    showAlert(message);
+    setFieldError(limitError, message);
+    return null;
+  }
+  setFieldError(limitError, "");
+  return limit;
+}
+
+async function loadProcesos() {
+  statusLine.textContent = "Estado: cargando...";
+  setLoading(true);
+  const limitValue = getLimitValue();
+  if (!limitValue) {
+    statusLine.textContent = "Estado: error";
+    setLoading(false);
+    return;
+  }
+  const params = buildQuery();
+  try {
+    const res = await fetch(`/procesos?${params.toString()}`);
+    if (!res.ok) {
+      statusLine.textContent = "Estado: error";
+      showAlert("No se pudo cargar /procesos. Revisa el servidor.");
+      return;
+    }
+    const data = await res.json();
+    totalPill.textContent = `Total: ${data.total}`;
+    const limit = Number(params.get("limit") || 25);
+    const offset = Number(params.get("offset") || 0);
+    const page = Math.floor(offset / limit) + 1;
+    const pages = Math.max(1, Math.ceil((data.total || 0) / limit));
+    pagerInfo.textContent = `Pagina ${page} de ${pages}`;
+    statTotalTop.textContent = data.total ?? "-";
+    statPageTop.textContent = `${page} / ${pages}`;
+    btnPrev.disabled = offset <= 0;
+    btnNext.disabled = page >= pages;
+    renderTable(data.items || []);
+    statusLine.textContent = "Estado: listo";
+    showAlert("");
+    loadStats();
+  } catch (_) {
+    statusLine.textContent = "Estado: error";
+    showAlert("Error de red al cargar procesos.");
+  } finally {
+    setLoading(false);
+  }
 }
 
 async function loadStats() {
+  setLoading(true);
   const params = buildQuery();
-  const res = await fetch(`/stats/resumen?${params.toString()}`);
-  if (!res.ok) {
-    showAlert("No se pudo cargar el resumen.");
-    return;
+  try {
+    const res = await fetch(`/stats/resumen?${params.toString()}`);
+    if (!res.ok) {
+      showAlert("No se pudo cargar el resumen.");
+      return;
+    }
+    const data = await res.json();
+    document.getElementById("stat-total").textContent = data.total ?? "-";
+    document.getElementById("stat-cuantia-proceso").textContent = data.total_cuantia_proceso ?? "-";
+    document.getElementById("stat-cuantia-contrato").textContent = data.total_cuantia_contrato ?? "-";
+    document.getElementById("stat-anno-min").textContent = data.min_anno_firma_contrato ?? "-";
+    document.getElementById("stat-anno-max").textContent = data.max_anno_firma_contrato ?? "-";
+  } catch (_) {
+    showAlert("Error de red al cargar el resumen.");
+  } finally {
+    setLoading(false);
   }
-  const data = await res.json();
-  document.getElementById("stat-total").textContent = data.total ?? "-";
-  document.getElementById("stat-cuantia-proceso").textContent = data.total_cuantia_proceso ?? "-";
-  document.getElementById("stat-cuantia-contrato").textContent = data.total_cuantia_contrato ?? "-";
-  document.getElementById("stat-anno-min").textContent = data.min_anno_firma_contrato ?? "-";
-  document.getElementById("stat-anno-max").textContent = data.max_anno_firma_contrato ?? "-";
 }
 
 async function loadStatus() {
-  const res = await fetch("/sync/status");
-  if (!res.ok) {
-    showAlert("No se pudo cargar el estado de sync.");
-    return;
+  setLoading(true);
+  try {
+    const res = await fetch("/sync/status");
+    if (!res.ok) {
+      showAlert("No se pudo cargar el estado de sync.");
+      return;
+    }
+    const data = await res.json();
+    statSyncTop.textContent = data.last_run_ts ? new Date(data.last_run_ts).toLocaleString() : "-";
+    statSyncStatus.textContent = data.last_run_status ?? "-";
+  } catch (_) {
+    showAlert("Error de red al cargar el estado de sync.");
+  } finally {
+    setLoading(false);
   }
-  const data = await res.json();
-  statSyncTop.textContent = data.last_run_ts ? new Date(data.last_run_ts).toLocaleString() : "-";
-  statSyncStatus.textContent = data.last_run_status ?? "-";
 }
 
 function clearFilters() {
@@ -219,6 +313,8 @@ function clearFilters() {
 }
 
 function exportCsv() {
+  const limitValue = getLimitValue();
+  if (!limitValue) return;
   const params = buildQuery();
   const cols = val(fields.cols);
   if (cols) params.set("cols", cols);
@@ -226,6 +322,8 @@ function exportCsv() {
 }
 
 function exportXlsx() {
+  const limitValue = getLimitValue();
+  if (!limitValue) return;
   const params = buildQuery();
   const cols = val(fields.cols);
   const limit = val(fields.xlsxLimit) || "5000";
@@ -240,21 +338,29 @@ function setOffset(newOffset) {
 }
 
 btnPrev.addEventListener("click", () => {
-  const limit = Number(val(fields.limit) || 25);
+  const limit = getLimitValue();
+  if (!limit) return;
   const offset = Number(val(fields.offset) || 0);
   setOffset(offset - limit);
   loadProcesos();
 });
 
 btnNext.addEventListener("click", () => {
-  const limit = Number(val(fields.limit) || 25);
+  const limit = getLimitValue();
+  if (!limit) return;
   const offset = Number(val(fields.offset) || 0);
   setOffset(offset + limit);
   loadProcesos();
 });
 
-document.getElementById("btn-search").addEventListener("click", loadProcesos);
-document.getElementById("btn-refresh").addEventListener("click", loadProcesos);
+document.getElementById("btn-search").addEventListener("click", () => {
+  setOffset(0);
+  loadProcesos();
+});
+document.getElementById("btn-refresh").addEventListener("click", () => {
+  setOffset(0);
+  loadProcesos();
+});
 document.getElementById("btn-stats").addEventListener("click", loadStats);
 document.getElementById("btn-status").addEventListener("click", loadStatus);
 document.getElementById("btn-clear").addEventListener("click", () => {
@@ -266,12 +372,47 @@ document.getElementById("btn-export-xlsx").addEventListener("click", exportXlsx)
 
 document.querySelectorAll(".quick-filters .chip").forEach((chip) => {
   chip.addEventListener("click", () => {
-    document.querySelectorAll(".chip").forEach((c) => c.classList.remove("active"));
+    document.querySelectorAll(".quick-filters .chip").forEach((c) => c.classList.remove("active"));
     chip.classList.add("active");
     const estadoValue = chip.getAttribute("data-estado");
     document.getElementById(fields.estado).value = estadoValue || "";
+    setOffset(0);
     loadProcesos();
   });
+});
+
+function debounce(fn, wait) {
+  let timeoutId;
+  return (...args) => {
+    window.clearTimeout(timeoutId);
+    timeoutId = window.setTimeout(() => fn(...args), wait);
+  };
+}
+
+const debouncedSearch = debounce(() => {
+  setOffset(0);
+  loadProcesos();
+}, 450);
+
+const autoSearchFields = [
+  fields.anno,
+  fields.annoMin,
+  fields.annoMax,
+  fields.modalidad,
+  fields.destino,
+  fields.entidad,
+  fields.cuantiaMin,
+  fields.cuantiaMax,
+  fields.estado,
+  fields.q,
+  fields.limit,
+];
+
+autoSearchFields.forEach((fieldId) => {
+  const el = document.getElementById(fieldId);
+  if (!el) return;
+  const eventName = el.tagName === "SELECT" ? "change" : "input";
+  el.addEventListener(eventName, debouncedSearch);
 });
 
 if (themeToggle) {
@@ -286,5 +427,7 @@ if (themeToggle) {
 initTheme();
 loadCatalog(fields.estado, "estado_del_proceso");
 loadCatalog(fields.destino, "destino_gasto");
+loadCatalog(fields.modalidad, "modalidad_de_contratacion", "Todas");
+loadYearCatalog([fields.annoMin, fields.annoMax, fields.anno]);
 loadProcesos();
 loadStatus();
