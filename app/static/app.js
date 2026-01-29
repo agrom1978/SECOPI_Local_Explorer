@@ -113,6 +113,7 @@ async function loadYearCatalog(selectIds) {
     });
   } catch (_) {
     showAlert("No se pudo cargar los años de firma de contrato.");
+    showAlert(`No se pudo cargar el catalogo ${catalogo}.`);
   }
 }
 
