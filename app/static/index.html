@@ -59,21 +59,28 @@
         <div class="quick-filters">
           <button class="chip" data-estado="CONVOCADO">Convocado</button>
           <button class="chip" data-estado="ADJUDICADO">Adjudicado</button>
+          <button class="chip" data-estado="CELEBRADO">Celebrado</button>
           <button class="chip" data-estado="TERMINADO ANORMALMENTE DESPUES DE CONVOCADO">Terminado anormal</button>
           <button class="chip" data-estado="">Limpiar estado</button>
         </div>
         <div class="filters">
           <div class="field">
-            <label>Año (desde)</label>
-            <input type="number" id="anno-min" placeholder="2018" />
+            <label>Año firma contrato (desde)</label>
+            <select id="anno-min">
+              <option value="">Todos</option>
+            </select>
           </div>
           <div class="field">
-            <label>Año (hasta)</label>
-            <input type="number" id="anno-max" placeholder="2024" />
+            <label>Año firma contrato (hasta)</label>
+            <select id="anno-max">
+              <option value="">Todos</option>
+            </select>
           </div>
           <div class="field">
             <label>Modalidad</label>
-            <input type="text" id="modalidad" placeholder="Licitacion Publica" />
+            <select id="modalidad">
+              <option value="">Todas</option>
+            </select>
           </div>
           <div class="field">
             <label>Estado</label>
@@ -96,7 +103,9 @@
           <div class="filters">
             <div class="field">
               <label>Año firma contrato</label>
-              <input type="number" id="anno" placeholder="2019" />
+              <select id="anno">
+                <option value="">Todos</option>
+              </select>
             </div>
             <div class="field">
               <label>Destino del gasto</label>

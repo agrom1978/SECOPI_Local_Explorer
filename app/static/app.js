@@ -12,6 +12,7 @@ const statSyncStatus = document.getElementById("stat-sync-status");
 const themeToggle = document.getElementById("theme-toggle");
 const loadingSpinner = document.getElementById("loading-spinner");
 const limitError = document.getElementById("limit-error");
+let loadingCount = 0;
 
 const btnPrev = document.getElementById("btn-prev");
 const btnNext = document.getElementById("btn-next");
@@ -63,7 +64,26 @@ function initTheme() {
   }
 }
 
-async function loadCatalog(selectId, catalogo) {
+function populateSelect(select, items, allLabel = "Todos") {
+  if (!select) return;
+  const current = select.value;
+  select.innerHTML = "";
+  const optAll = document.createElement("option");
+  optAll.value = "";
+  optAll.textContent = allLabel;
+  select.appendChild(optAll);
+  items.forEach((item) => {
+    const opt = document.createElement("option");
+    opt.value = item;
+    opt.textContent = item;
+    select.appendChild(opt);
+  });
+  if (current && items.includes(current)) {
+    select.value = current;
+  }
+}
+
+async function loadCatalog(selectId, catalogo, allLabel = "Todos") {
   const select = document.getElementById(selectId);
   if (!select) return;
   try {
@@ -71,22 +91,28 @@ async function loadCatalog(selectId, catalogo) {
     if (!res.ok) return;
     const data = await res.json();
     const items = Array.isArray(data.items) ? data.items : [];
-    const current = select.value;
-    select.innerHTML = "";
-    const optAll = document.createElement("option");
-    optAll.value = "";
-    optAll.textContent = "Todos";
-    select.appendChild(optAll);
-    items.forEach((item) => {
-      const opt = document.createElement("option");
-      opt.value = item;
-      opt.textContent = item;
-      select.appendChild(opt);
-    });
-    if (current && items.includes(current)) {
-      select.value = current;
-    }
+    populateSelect(select, items, allLabel);
   } catch (_) {
+    showAlert(`No se pudo cargar el catalogo ${catalogo}.`);
+  }
+}
+
+async function loadYearCatalog(selectIds) {
+  try {
+    const res = await fetch("/catalogos/anno_firma_contrato");
+    if (!res.ok) return;
+    const data = await res.json();
+    const years = (Array.isArray(data.items) ? data.items : [])
+      .map((item) => Number(item))
+      .filter((item) => Number.isFinite(item))
+      .sort((a, b) => a - b)
+      .map((item) => String(item));
+    selectIds.forEach((id) => {
+      const select = document.getElementById(id);
+      populateSelect(select, years, "Todos");
+    });
+  } catch (_) {
+    showAlert("No se pudo cargar los años de firma de contrato.");
     showAlert(`No se pudo cargar el catalogo ${catalogo}.`);
   }
 }
@@ -170,6 +196,11 @@ function setFieldError(element, message) {
 function setLoading(isLoading) {
   if (!loadingSpinner) return;
   if (isLoading) {
+    loadingCount += 1;
+  } else {
+    loadingCount = Math.max(0, loadingCount - 1);
+  }
+  if (loadingCount > 0) {
     loadingSpinner.classList.remove("hidden");
   } else {
     loadingSpinner.classList.add("hidden");
@@ -220,6 +251,7 @@ async function loadProcesos() {
     renderTable(data.items || []);
     statusLine.textContent = "Estado: listo";
     showAlert("");
+    loadStats();
   } catch (_) {
     statusLine.textContent = "Estado: error";
     showAlert("Error de red al cargar procesos.");
@@ -396,5 +428,7 @@ if (themeToggle) {
 initTheme();
 loadCatalog(fields.estado, "estado_del_proceso");
 loadCatalog(fields.destino, "destino_gasto");
+loadCatalog(fields.modalidad, "modalidad_de_contratacion", "Todas");
+loadYearCatalog([fields.annoMin, fields.annoMax, fields.anno]);
 loadProcesos();
 loadStatus();

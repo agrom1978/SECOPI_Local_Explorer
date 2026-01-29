@@ -20,24 +20,24 @@
 }
 
 [data-theme="light"] {
-  --bg: #f4f6fb;
-  --bg-2: #e7ebf4;
+  --bg: #f7f9fc;
+  --bg-2: #edf2f8;
   --card: #ffffff;
   --ink: #0f172a;
-  --muted: #5b677a;
-  --accent: #0ea5e9;
+  --muted: #475569;
+  --accent: #0284c7;
   --accent-2: #f97316;
-  --line: #dde3ef;
-  --shadow: 0 24px 50px rgba(15, 23, 42, 0.08);
-  --input-bg: #f6f8fc;
-  --input-border: #c9d2e3;
-  --table-head: #eef3fb;
-  --table-border: #d9e1f0;
-  --table-row: #e6edf9;
-  --card-alt: #f3f6fb;
-  --hero-bg: linear-gradient(120deg, rgba(14, 165, 233, 0.18), rgba(249, 115, 22, 0.12));
-  --hero-border: rgba(15, 23, 42, 0.08);
-  --body-bg: radial-gradient(circle at top left, #ffffff 0%, #f1f4fb 45%, #e3e9f5 100%);
+  --line: #c7d2e5;
+  --shadow: 0 24px 50px rgba(15, 23, 42, 0.12);
+  --input-bg: #f8fafc;
+  --input-border: #b6c2d6;
+  --table-head: #e9effa;
+  --table-border: #cad5e6;
+  --table-row: #e1e8f4;
+  --card-alt: #f1f5fb;
+  --hero-bg: linear-gradient(120deg, rgba(2, 132, 199, 0.18), rgba(249, 115, 22, 0.12));
+  --hero-border: rgba(15, 23, 42, 0.12);
+  --body-bg: radial-gradient(circle at top left, #ffffff 0%, #f4f6fb 45%, #e6edf7 100%);
 }
 
 * {
@@ -172,6 +172,12 @@ p {
   border: 1px solid rgba(248, 113, 113, 0.4);
 }
 
+[data-theme="light"] .alert {
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: #fecaca;
+}
+
 .alert.hidden {
   display: none;
 }
@@ -277,6 +283,16 @@ select {
   color: var(--accent);
 }
 
+[data-theme="light"] .chip {
+  border-color: rgba(71, 85, 105, 0.45);
+}
+
+[data-theme="light"] .chip.active {
+  background: rgba(2, 132, 199, 0.16);
+  border-color: rgba(2, 132, 199, 0.65);
+  color: #0369a1;
+}
+
 .panel-actions {
   margin-top: 16px;
   display: flex;
@@ -319,6 +335,20 @@ select {
   background: transparent;
   border: 1px solid rgba(148, 163, 184, 0.4);
   color: var(--ink);
+}
+
+[data-theme="light"] .btn.primary {
+  color: #ffffff;
+}
+
+[data-theme="light"] .btn.secondary {
+  background: #1d4ed8;
+  color: #ffffff;
+}
+
+[data-theme="light"] .btn.ghost {
+  border-color: rgba(71, 85, 105, 0.45);
+  color: #1e293b;
 }
 
 .table-wrap {
